@@ -10,7 +10,7 @@ from SQLModel import User, identityENUM
 from passlib.context import CryptContext
 
 config = configparser.ConfigParser()
-config.read("config.ini")
+config.read("/root/studyTogether/config.ini")
 DB_CONFIG = config["DATABASE"]
 
 # 配置密码上下文：指定使用 bcrypt 算法
@@ -55,7 +55,7 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
-@app.post("/api/v1/login")
+@app.post("/api/v1/user/login")
 def login(
     phoneNum: str = Form(),
     password: str = Form(),
@@ -82,7 +82,7 @@ def login(
         return {'code': 100, 'msg': 'passwd error'}
 
 
-@app.post("/api/v1/regist/getNum")
+@app.post("/api/v1/user/regist/getNum")
 def regist_getNum(phoneNum: str = Form(), db: Session = Depends(get_db)):
     #数据库验证，防止已注册的手机号重复注册
     user = db.query(User).filter(User.phone == phoneNum).first()
@@ -94,7 +94,7 @@ def regist_getNum(phoneNum: str = Form(), db: Session = Depends(get_db)):
         Sample_send.main(phoneNum)
         return {'code':0, 'msg':'success'}
 
-@app.post("/api/v1/regist/verityNum")
+@app.post("/api/v1/user/regist/verityNum")
 def regist_vrityNum(
         phoneNum: str = Form(),
         vriCode: str = Form(),
@@ -105,9 +105,13 @@ def regist_vrityNum(
         db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.phone == phoneNum).first()
+    name = db.query(User).filter(User.nickname == Nickname).first()
     if (user is not None):
         print('user not None')
         return {'code': 10001, 'msg': 'already registed'}
+    if (name is not None):
+    	   print('name has been used')
+    	   return {'code': 10003, 'msg': 'username has been used'}
 
     #阿里云api直接用，返回结果就是data
     data = json.loads(Sample_check.main(phoneNum, vriCode))

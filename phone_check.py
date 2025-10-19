@@ -25,7 +25,7 @@ class Sample_check:
         @throws Exception
         """
         config_reader = configparser.ConfigParser()
-        config_reader.read('config.ini',encoding='utf-8')
+        config_reader.read('/root/studyTogether/config.ini',encoding='utf-8')
         # 获取所有section
         sections = config_reader.sections()
         if 'AK' in sections:

@@ -1,0 +1,6 @@
+# 忽略 Python 缓存目录
+__pycache__/
+# 忽略环境变量文件（含敏感信息）
+.env
+# 如需忽略 config.ini（如果包含敏感信息），也可以添加
+config.ini
