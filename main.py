@@ -6,11 +6,11 @@ from phone_check import Sample_check
 import json
 from sqlalchemy import text, create_engine
 from sqlalchemy.orm import Session, sessionmaker
-from SQLModel import User, identityENUM
+from SQLModel import User, identityENUM, Teacher, Parent
 from passlib.context import CryptContext
 
 config = configparser.ConfigParser()
-config.read("/root/studyTogether/config.ini")
+config.read("./config.ini")
 DB_CONFIG = config["DATABASE"]
 
 # 配置密码上下文：指定使用 bcrypt 算法
@@ -110,8 +110,9 @@ def regist_vrityNum(
         print('user not None')
         return {'code': 10001, 'msg': 'already registed'}
     if (name is not None):
-    	   print('name has been used')
-    	   return {'code': 10003, 'msg': 'username has been used'}
+        print('name has been used')
+        return {'code': 10003, 'msg': 'username has been used'}
+
 
     #阿里云api直接用，返回结果就是data
     data = json.loads(Sample_check.main(phoneNum, vriCode))
@@ -141,3 +142,91 @@ def test_db(db: Session = Depends(get_db)):
     # 执行SQL查询
     result = db.execute(text("SELECT 1")).scalar()
     return {"status": "success", "result": result}
+
+# 老师信息提交接口
+@app.post("/api/v1/teacher/profile")
+def submit_teacher_profile(
+    user_id: int = Form(),
+    subject: str = Form(),
+    education: str | None = Form(None),
+    experience: str | None = Form(None),
+    introduction: str | None = Form(None),
+    hourly_rate: float = Form(),
+    db: Session = Depends(get_db)
+):
+    # 验证用户是否存在且身份为老师
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return {"code": 10004, "msg": "用户不存在"}
+    
+    if user.identity.value != "teacher":
+        return {"code": 10005, "msg": "用户身份不是老师"}
+    
+    # 检查是否已有老师信息，有则更新，无则创建
+    teacher = db.query(Teacher).filter(Teacher.user_id == user_id).first()
+    
+    if teacher:
+        # 更新现有信息
+        teacher.subject = subject
+        teacher.education = education
+        teacher.experience = experience
+        teacher.introduction = introduction
+        teacher.hourly_rate = hourly_rate
+        db.commit()
+        db.refresh(teacher)
+        return {"code": 0, "msg": "更新成功", "teacher_id": teacher.id}
+    else:
+        # 创建新的老师信息
+        new_teacher = Teacher(
+            user_id=user_id,
+            subject=subject,
+            education=education,
+            experience=experience,
+            introduction=introduction,
+            hourly_rate=hourly_rate
+        )
+        db.add(new_teacher)
+        db.commit()
+        db.refresh(new_teacher)
+        return {"code": 0, "msg": "创建成功", "teacher_id": new_teacher.id}
+
+# 家长信息提交接口
+@app.post("/api/v1/parent/profile")
+def submit_parent_profile(
+    user_id: int = Form(),
+    child_grade: str | None = Form(None),
+    needs: str | None = Form(None),
+    hourly_rate: float = Form(),
+    db: Session = Depends(get_db)
+):
+    # 验证用户是否存在且身份为家长
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return {"code": 10004, "msg": "用户不存在"}
+    
+    if user.identity.value != "parent":
+        return {"code": 10005, "msg": "用户身份不是家长"}
+    
+    # 检查是否已有家长信息，有则更新，无则创建
+    parent = db.query(Parent).filter(Parent.user_id == user_id).first()
+    
+    if parent:
+        # 更新现有信息
+        parent.child_grade = child_grade
+        parent.needs = needs
+        parent.hourly_rate = hourly_rate
+        db.commit()
+        db.refresh(parent)
+        return {"code": 0, "msg": "更新成功", "parent_id": parent.id}
+    else:
+        # 创建新的家长信息
+        new_parent = Parent(
+            user_id=user_id,
+            child_grade=child_grade,
+            needs=needs,
+            hourly_rate=hourly_rate
+        )
+        db.add(new_parent)
+        db.commit()
+        db.refresh(new_parent)
+        return {"code": 0, "msg": "创建成功", "parent_id": new_parent.id}
